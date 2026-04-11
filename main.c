@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <string.h>
 
 #define MAP_WIDTH 61  /* must be odd for maze gen */
 #define MAP_HEIGHT 21 /* must be odd for maze gen */
@@ -14,7 +15,8 @@
 typedef enum {
     STATE_GENERATING,
     STATE_PLAYING,
-    STATE_GAME_OVER
+    STATE_GAME_OVER,
+    STATE_LEADERBOARD
 } GameState;
 
 typedef struct {
@@ -194,7 +196,7 @@ void render_game(int steps) {
     printf("\n\n\n\n\n\n\n\n\n\n"); 
     printf("--- MAZE RUNNER ---\n");
     printf("Steps taken: %d\n", steps);
-    printf("Controls: w, a, s, d. Type 'f' to fire bow. Type 'q' to quit.\n");
+    printf("Controls: w, a, s, d. Type 'f' to Fire. 'v' to Save. 'l' to Load. 'q' to Quit.\n");
     printf("Weapon: %s\n\n", has_weapon ? "Bow" : "None");
 
     for (y = 0; y < MAP_HEIGHT; y++) {
@@ -247,6 +249,104 @@ int check_line_of_sight(void) {
     return 0; /* not on the same axis */
 }
 
+void save_game(int steps) {
+    /* open file in write binary mode */
+    FILE *fp = fopen("maze.sav", "wb");
+    if (fp == NULL) {
+        printf("\n>>> ERROR: Could not create save file! <<<\n");
+        return;
+    }
+
+    /* dump the raw memory of our arrays and structs directly to the file */
+    fwrite(cave_map, sizeof(char), MAP_HEIGHT * MAP_WIDTH, fp);
+    fwrite(&player, sizeof(Entity), 1, fp);
+    fwrite(&enemy, sizeof(Entity), 1, fp);
+    fwrite(&weapon, sizeof(Entity), 1, fp);
+    fwrite(&has_weapon, sizeof(int), 1, fp);
+    fwrite(&monster_dead, sizeof(int), 1, fp);
+    fwrite(&steps, sizeof(int), 1, fp);
+
+    fclose(fp);
+    printf("\n>>> GAME SAVED SUCCESSFULLY TO maze.sav <<<\n");
+}
+
+/* returns the loaded step count, or -1 if the file doesnt exist */
+int load_game(void) {
+    int loaded_steps;
+    
+    /* open file in read binary mode */
+    FILE *fp = fopen("maze.sav", "rb");
+    if (fp == NULL) {
+        printf("\n>>> ERROR: No save file found! <<<\n");
+        return -1;
+    }
+
+    /* read the bytes back into ram in the exact same order */
+    fread(cave_map, sizeof(char), MAP_HEIGHT * MAP_WIDTH, fp);
+    fread(&player, sizeof(Entity), 1, fp);
+    fread(&enemy, sizeof(Entity), 1, fp);
+    fread(&weapon, sizeof(Entity), 1, fp);
+    fread(&has_weapon, sizeof(int), 1, fp);
+    fread(&monster_dead, sizeof(int), 1, fp);
+    fread(&loaded_steps, sizeof(int), 1, fp);
+
+    fclose(fp);
+    printf("\n>>> GAME LOADED SUCCESSFULLY! <<<\n");
+    return loaded_steps;
+}
+
+void record_score(int steps) {
+    char initials[4];
+    FILE *fp;
+    
+    printf("\n*** YOU ESCAPED! ***\n");
+    printf("Enter 3 initials for the leaderboard: ");
+    scanf("%3s", initials);
+
+    /* open in append mode to add to the bottom of the text file */
+    fp = fopen("leaderboard.csv", "a");
+    if (fp != NULL) {
+        fprintf(fp, "%s,%d\n", initials, steps);
+        fclose(fp);
+    } else {
+        printf("Error: Could not save to leaderboard.\n");
+    }
+}
+
+void display_leaderboard(void) {
+    char line[50];
+    char *name_token;
+    char *score_token;
+    FILE *fp;
+
+    printf("\n=========================\n");
+    printf("   MAZE LEADERBOARD   \n");
+    printf("=========================\n");
+
+    /* open in read mode */
+    fp = fopen("leaderboard.csv", "r");
+    if (fp == NULL) {
+        printf("  No scores recorded yet!  \n");
+        printf("=========================\n\n");
+        return;
+    }
+
+    /* state machine */
+    while (fgets(line, sizeof(line), fp) != NULL) {
+        name_token = strtok(line, ",");
+        score_token = strtok(NULL, "\n");
+
+        if (name_token != NULL && score_token != NULL) {
+            /* use strtol to safely convert the string number back into an integer */
+            long score = strtol(score_token, NULL, 10);
+            printf("  %s ........ %ld steps\n", name_token, score);
+        }
+    }
+    
+    fclose(fp);
+    printf("=========================\n\n");
+}
+
 int main(void) {
     GameState current_state = STATE_GENERATING;
     char input;
@@ -296,6 +396,17 @@ int main(void) {
             current_state = STATE_GAME_OVER;
             continue;
         }
+        else if (input == 'v') {
+            save_game(step_count);
+            continue;
+        }
+        else if (input == 'l') {
+            int loaded = load_game();
+            if (loaded != -1) {
+                step_count = loaded; /* overwrite current steps with loaded steps */
+            }
+            continue;
+        }
 
         /* collision detection: only move if the target tile is a floor */
         /* if (cave_map[target_y][target_x] == '.') { */
@@ -312,8 +423,11 @@ int main(void) {
             /* check if player reached the exit opening on the right wall */
             if (player.x == MAP_WIDTH - 1) {
                 render_game(step_count);
-                printf("You escaped the abyss in %d steps!\n", step_count);
-                current_state = STATE_GAME_OVER;
+
+                record_score(step_count);
+                current_state = STATE_LEADERBOARD;
+                /* printf("You escaped the maze in %d steps!\n", step_count);
+                 current_state = STATE_GAME_OVER;*/
                 continue;
             }
 
@@ -362,6 +476,10 @@ int main(void) {
         }
         
         /* if hit wall, do nothing and loop again */
+    }
+
+    if (current_state == STATE_LEADERBOARD) {
+        display_leaderboard();
     }
 
     return 0;
