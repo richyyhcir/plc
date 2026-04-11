@@ -24,7 +24,11 @@ typedef struct {
 } Entity;
 
 char cave_map[MAP_HEIGHT][MAP_WIDTH];
-Entity player;
+Entity player; /* @ for player */
+Entity enemy; /* m for monster*/
+Entity weapon; /* b for bow */
+int has_weapon = 0; /* 0 = no, 1 = yes */
+int monster_dead = 0; /* 0 = alive, 1 = unalived */
 
 /* old cave generation algo (drunkard's walk) - commented out
 void generate_thick_maze(void) {
@@ -168,6 +172,18 @@ void generate_maze(void) {
 
     /* open exit on the right wall next to the bottom-right cell */
     cave_map[(cells_h - 1) * 2 + 1][MAP_WIDTH - 1] = ' ';
+
+    /* enemy near exit */
+    enemy.x = MAP_WIDTH - 3; 
+    enemy.y = (cells_h - 1) * 2 + 1;
+    enemy.symbol = 'M';
+
+    /* place weapon somewhere in the maze */
+    do {
+        weapon.x = (rand() % (MAP_WIDTH / 2)) * 2 + 1;
+        weapon.y = (rand() % (MAP_HEIGHT / 2)) * 2 + 1;
+    } while (weapon.x == player.x && weapon.y == player.y); /* Don't spawn ON the player */
+    weapon.symbol = 'B';
 }
 
 /* rendering */
@@ -176,9 +192,10 @@ void render_game(int steps) {
     
     /* clear console */
     printf("\n\n\n\n\n\n\n\n\n\n"); 
-    printf("--- ABYSS WALKER ---\n");
+    printf("--- MAZE RUNNER ---\n");
     printf("Steps taken: %d\n", steps);
-    printf("Controls: w, a, s, d (then press Enter). Type 'q' to quit.\n\n");
+    printf("Controls: w, a, s, d. Type 'f' to fire bow. Type 'q' to quit.\n");
+    printf("Weapon: %s\n\n", has_weapon ? "Bow" : "None");
 
     for (y = 0; y < MAP_HEIGHT; y++) {
         for (x = 0; x < MAP_WIDTH; x++) {
@@ -186,7 +203,16 @@ void render_game(int steps) {
             if (x == player.x && y == player.y) {
                 /* putchar(player.symbol); */
                 printf("%c ", player.symbol);
-            } else {
+            }
+            /* draw monster */
+            else if (!monster_dead && x == enemy.x && y == enemy.y) {
+                printf("%c ", enemy.symbol);
+            }
+            /* draw weapon */
+            else if (!has_weapon && x == weapon.x && y == weapon.y) {
+                printf("%c ", weapon.symbol);
+            }
+            else {
                 /* putchar(cave_map[y][x]); */
                 printf("%c ", cave_map[y][x]);
             }
@@ -196,11 +222,37 @@ void render_game(int steps) {
     printf("\nCommand: ");
 }
 
+int check_line_of_sight(void) {
+    int start, end, i;
+
+    /* check vertical line of sight */
+    if (player.x == enemy.x) {
+        start = (player.y < enemy.y) ? player.y : enemy.y;
+        end = (player.y > enemy.y) ? player.y : enemy.y;
+        for (i = start + 1; i < end; i++) {
+            if (cave_map[i][player.x] == '#') return 0; /* wall in the way */
+        }
+        return 1; /* can shoot */
+    } 
+    /* check horizontal line of sight */
+    else if (player.y == enemy.y) {
+        start = (player.x < enemy.x) ? player.x : enemy.x;
+        end = (player.x > enemy.x) ? player.x : enemy.x;
+        for (i = start + 1; i < end; i++) {
+            if (cave_map[player.y][i] == '#') return 0; /* wall in the way */
+        }
+        return 1; /* can shoot */
+    }
+    
+    return 0; /* not on the same axis */
+}
+
 int main(void) {
     GameState current_state = STATE_GENERATING;
     char input;
     int target_x, target_y;
     int step_count = 0;
+    int moved = 0;
 
     srand((unsigned int)time(NULL));
 
@@ -225,8 +277,22 @@ int main(void) {
         else if (input == 's') target_y++;
         else if (input == 'a') target_x--;
         else if (input == 'd') target_x++;
+        else if (input == 'f') {
+            if (has_weapon) {
+                if (!monster_dead && check_line_of_sight()) {
+                    monster_dead = 1;
+                    /* push a temporary message to the console */
+                    printf("\n>>> Pew! You shot the monster! <<<\n");
+                } else {
+                    printf("\n>>> No clear line of sight to the monster! <<<\n");
+                }
+            } else {
+                printf("\n>>> You don't have a weapon! <<<\n");
+            }
+            continue; /* dont advance the turn or move the player */
+        }
         else if (input == 'q') {
-            printf("You have abandoned the abyss.\n");
+            printf("You have abandoned the maze.\n");
             current_state = STATE_GAME_OVER;
             continue;
         }
@@ -238,12 +304,60 @@ int main(void) {
             player.y = target_y;
             step_count++; /* only count valid steps */
 
+            if (!has_weapon && player.x == weapon.x && player.y == weapon.y) {
+                has_weapon = 1;
+                printf("\n>>> You picked up the bow! Type 'f' to fire at the monster. <<<\n");
+            }
+
             /* check if player reached the exit opening on the right wall */
             if (player.x == MAP_WIDTH - 1) {
                 render_game(step_count);
                 printf("You escaped the abyss in %d steps!\n", step_count);
                 current_state = STATE_GAME_OVER;
                 continue;
+            }
+
+            /* monster ai */
+            if (!monster_dead)
+            {
+                moved = 0;
+                
+                /* try to close the horizontal distance first */
+                if (player.x > enemy.x && cave_map[enemy.y][enemy.x + 1] == ' ') {
+                    enemy.x++;
+                    moved = 1;
+                } else if (player.x < enemy.x && cave_map[enemy.y][enemy.x - 1] == ' ') {
+                    enemy.x--;
+                    moved = 1;
+                }
+
+                /* if it cant move horizontally, try vertical */
+                if (moved == 0) {
+                    if (player.y > enemy.y && cave_map[enemy.y + 1][enemy.x] == ' ') {
+                        enemy.y++;
+                        moved = 1;
+                    } else if (player.y < enemy.y && cave_map[enemy.y - 1][enemy.x] == ' ') {
+                        enemy.y--;
+                        moved = 1;
+                    }
+                }
+
+                /* if stuck, take a random available step so it doesnt freeze */
+                if (moved == 0) {
+                    int random_dir = rand() % 4;
+                    if (random_dir == 0 && cave_map[enemy.y - 1][enemy.x] == ' ') enemy.y--;
+                    else if (random_dir == 1 && cave_map[enemy.y + 1][enemy.x] == ' ') enemy.y++;
+                    else if (random_dir == 2 && cave_map[enemy.y][enemy.x - 1] == ' ') enemy.x--;
+                    else if (random_dir == 3 && cave_map[enemy.y][enemy.x + 1] == ' ') enemy.x++;
+                }
+
+                /* check for the kill condition */
+                if (player.x == enemy.x && player.y == enemy.y) {
+                    render_game(step_count);
+                    printf("\n*** THE MONSTER CAUGHT YOU! GAME OVER. ***\n");
+                    current_state = STATE_GAME_OVER;
+                    continue;
+                }
             }
         }
         
