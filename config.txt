@@ -1,0 +1,9 @@
+# Abyss Walker Configuration
+# width and height are in maze cells (min 3, max 30x20)
+# seed: 0 = random each run, any other number = fixed generation
+# density: 100 = perfect maze (no extra paths), 0 = very open (many shortcuts)
+
+width=13
+height=7
+seed=0
+density=100
