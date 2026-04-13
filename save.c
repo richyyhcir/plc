@@ -102,8 +102,9 @@ static int load_entries(LeaderEntry *entries, int max) {
 
 static void save_entries(LeaderEntry *entries, int count) {
     FILE *fp = fopen("leaderboard.csv", "w");
+    int i;
     if (fp == NULL) return;
-    for (int i = 0; i < count; i++) {
+    for (i = 0; i < count; i++) {
         fprintf(fp, "%s,%d\n", entries[i].name, entries[i].steps);
     }
     fclose(fp);
@@ -135,6 +136,7 @@ void record_score(int steps) {
 void display_leaderboard(void) {
     LeaderEntry entries[MAX_LEADERBOARD];
     int count;
+    int i;
 
     printf("\n=========================\n");
     printf("   ABYSS LEADERBOARD   \n");
@@ -147,7 +149,7 @@ void display_leaderboard(void) {
         return;
     }
 
-    for (int i = 0; i < count; i++) {
+    for (i = 0; i < count; i++) {
         printf("  %s ........ %d steps\n", entries[i].name, entries[i].steps);
     }
 
