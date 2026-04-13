@@ -74,6 +74,11 @@ int main(void) {
             current_state = STATE_GAME_OVER;
             continue;
         }
+        else {
+            /* invalid command - don't process movement */
+            printf("\n>>> Invalid command! Use w/a/s/d to move, f to fire, v to save, l to load, q to quit. <<<\n");
+            continue;
+        }
 
         /* collision detection: only move if the target tile is a floor */
         if (cave_map[target_y][target_x] == ' ') {
