@@ -67,7 +67,16 @@ gcc -Wall -Werror -ansi -pedantic main.c map.c enemy.c config.c save.c -o abyss_
 
 ## Configuration
 
-Edit `config.txt` to change maze size, seed, and wall density. See the comments in that file for valid ranges.
+The game reads its settings from `config.txt` using a `key=value` format.   
+The supported keys are `width`, `height`, `seed`, and `density`.   
+- `width` must be between `3` and `30`,
+- `height` must be between `3` and `20`,
+- `seed` must be `0` or greater,
+- `density` must be between `0` and `100`.
+
+A `seed` value of `0` uses the current time for random maze generation, while any other non-negative integer produces a fixed maze layout for repeatable runs.  
+A `density` of `100` keeps the maze as a perfect maze with no extra openings, while lower values remove more internal walls and create a more open map.
+
 
 ## Controls
 
