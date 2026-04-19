@@ -62,33 +62,48 @@ static int read_entity(FILE *fp, Entity *entity) {
     return 1;
 }
 
-static int is_valid_floor_position(int x, int y) { /* return 1 if position is valid, 0 otherwise*/
-    return x >= 0 && x < map_width && y >= 0 && y < map_height
-        && cave_map[y][x] == ' ';
+static int is_valid_floor_position(const char map_data[MAX_MAP_HEIGHT][MAX_MAP_WIDTH],
+                                   int width, int height, int x, int y) {
+    return x >= 0 && x < width && y >= 0 && y < height
+        && map_data[y][x] == ' ';
 }
 
-static int validate_loaded_state(int steps) {
+static int validate_loaded_state(
+    const char map_data[MAX_MAP_HEIGHT][MAX_MAP_WIDTH],
+    int width,
+    int height,
+    const Entity *loaded_player,
+    const Entity *loaded_enemy,
+    const Entity *loaded_weapon,
+    int loaded_has_weapon,
+    int loaded_monster_dead,
+    int steps) {
     int x, y;
 
-    if (steps < 0 || has_weapon < 0 || has_weapon > 1
-        || monster_dead < 0 || monster_dead > 1) { /* reject invalid game states*/
+    if (width < 1 || width > MAX_MAP_WIDTH || height < 1 || height > MAX_MAP_HEIGHT)
+        return 0;
+
+    if (steps < 0 || loaded_has_weapon < 0 || loaded_has_weapon > 1
+        || loaded_monster_dead < 0 || loaded_monster_dead > 1) { /* reject invalid game states*/
         return 0;
     }
 
-    for (y = 0; y < MAX_MAP_HEIGHT; y++) { /* check all map cells for invalid characters*/
-        for (x = 0; x < MAX_MAP_WIDTH; x++) {
-            if (cave_map[y][x] != ' ' && cave_map[y][x] != '#')
+    for (y = 0; y < height; y++) { /* check active map cells for invalid characters*/
+        for (x = 0; x < width; x++) {
+            if (map_data[y][x] != ' ' && map_data[y][x] != '#')
                 return 0;
         }
     }
 
-    if (!is_valid_floor_position(player.x, player.y)
-        || !is_valid_floor_position(enemy.x, enemy.y)
-        || !is_valid_floor_position(weapon.x, weapon.y)) {
+    if (!is_valid_floor_position(map_data, width, height, loaded_player->x, loaded_player->y)
+        || !is_valid_floor_position(map_data, width, height, loaded_enemy->x, loaded_enemy->y)
+        || !is_valid_floor_position(map_data, width, height, loaded_weapon->x, loaded_weapon->y)) {
         return 0;
     }
 
-    if (player.symbol != '@' || enemy.symbol != 'M' || weapon.symbol != 'B')
+    if (loaded_player->symbol != '@'
+        || loaded_enemy->symbol != 'M'
+        || loaded_weapon->symbol != 'B')
         return 0;
 
     return 1;
@@ -124,6 +139,14 @@ void save_game(int steps) {
 /* returns the loaded step count, or -1 if the file doesnt exist */
 int load_game(void) {
     int loaded_steps;
+    int loaded_width;
+    int loaded_height;
+    int loaded_has_weapon;
+    int loaded_monster_dead;
+    char loaded_map[MAX_MAP_HEIGHT][MAX_MAP_WIDTH];
+    Entity loaded_player;
+    Entity loaded_enemy;
+    Entity loaded_weapon;
     char magic[SAVE_MAGIC_SIZE];
     unsigned long width_value;
     unsigned long height_value;
@@ -152,13 +175,13 @@ int load_game(void) {
         return -1;
     }
 
-    map_width = (int)width_value;
-    map_height = (int)height_value;
+    loaded_width = (int)width_value;
+    loaded_height = (int)height_value;
 
-    if (fread(cave_map, sizeof(char), MAX_MAP_HEIGHT * MAX_MAP_WIDTH, fp) != MAX_MAP_HEIGHT * MAX_MAP_WIDTH
-        || !read_entity(fp, &player)
-        || !read_entity(fp, &enemy)
-        || !read_entity(fp, &weapon)
+    if (fread(loaded_map, sizeof(char), MAX_MAP_HEIGHT * MAX_MAP_WIDTH, fp) != MAX_MAP_HEIGHT * MAX_MAP_WIDTH
+        || !read_entity(fp, &loaded_player)
+        || !read_entity(fp, &loaded_enemy)
+        || !read_entity(fp, &loaded_weapon)
         || !read_u32(fp, &flag_value)
         || flag_value > 1UL) {
         fclose(fp);
@@ -166,7 +189,7 @@ int load_game(void) {
         return -1;
     }
 
-    has_weapon = (int)flag_value;
+    loaded_has_weapon = (int)flag_value;
 
     if (!read_u32(fp, &flag_value)
         || flag_value > 1UL
@@ -177,14 +200,31 @@ int load_game(void) {
         return -1;
     }
 
-    monster_dead = (int)flag_value;
+    loaded_monster_dead = (int)flag_value;
     loaded_steps = (int)step_value;
 
-    if (!validate_loaded_state(loaded_steps)) {
+    if (!validate_loaded_state(loaded_map,
+                               loaded_width,
+                               loaded_height,
+                               &loaded_player,
+                               &loaded_enemy,
+                               &loaded_weapon,
+                               loaded_has_weapon,
+                               loaded_monster_dead,
+                               loaded_steps)) {
         fclose(fp);
         printf("\n>>> ERROR: Save file contains invalid game state. <<<\n");
         return -1;
     }
+
+    map_width = loaded_width;
+    map_height = loaded_height;
+    memcpy(cave_map, loaded_map, sizeof(loaded_map));
+    player = loaded_player;
+    enemy = loaded_enemy;
+    weapon = loaded_weapon;
+    has_weapon = loaded_has_weapon;
+    monster_dead = loaded_monster_dead;
 
     fclose(fp);
     printf("\n>>> GAME LOADED SUCCESSFULLY! <<<\n");
