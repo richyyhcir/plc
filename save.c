@@ -62,14 +62,14 @@ static int read_entity(FILE *fp, Entity *entity) {
     return 1;
 }
 
-static int is_valid_floor_position(const char map_data[MAX_MAP_HEIGHT][MAX_MAP_WIDTH],
+static int is_valid_floor_position(char map_data[MAX_MAP_HEIGHT][MAX_MAP_WIDTH],
                                    int width, int height, int x, int y) {
     return x >= 0 && x < width && y >= 0 && y < height
         && map_data[y][x] == ' ';
 }
 
 static int validate_loaded_state(
-    const char map_data[MAX_MAP_HEIGHT][MAX_MAP_WIDTH],
+    char map_data[MAX_MAP_HEIGHT][MAX_MAP_WIDTH],
     int width,
     int height,
     const Entity *loaded_player,

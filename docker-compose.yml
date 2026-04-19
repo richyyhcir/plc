@@ -1,0 +1,12 @@
+services:
+  abyss-walker:
+    build:
+      context: .
+    image: abyss-walker:latest
+    stdin_open: true
+    tty: true
+    volumes:
+      - abyss_walker_data:/data
+
+volumes:
+  abyss_walker_data:

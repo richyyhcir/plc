@@ -65,6 +65,20 @@ gcc -Wall -Werror -ansi -pedantic main.c map.c enemy.c config.c save.c -o abyss_
 .\abyss_walker.exe
 ```
 
+## Docker
+
+Start the game with Docker Compose:
+
+```bash
+docker compose up --build abyss-walker
+```
+
+Stop and remove containers/networks after you exit:
+
+```bash
+docker compose down
+```
+
 ## Configuration
 
 The game reads its settings from `config.txt` using a `key=value` format.   
@@ -98,3 +112,4 @@ make clean
 
 - Source code is strict C90, no platform-specific headers or APIs.
 - Save files (`maze.sav`) use explicit little-endian binary serialization, so a save written on one platform loads correctly on the other.
+- Docker image uses a multi-stage build: compile in `gcc:14-bookworm`, run in `debian:bookworm-slim`.
