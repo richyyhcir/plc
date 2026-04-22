@@ -12,22 +12,25 @@ static int bfs_next_step(int start_x, int start_y, int goal_x, int goal_y,
     int came_from[MAX_MAP_HEIGHT][MAX_MAP_WIDTH];
     int queue_x[MAX_MAP_HEIGHT * MAX_MAP_WIDTH];
     int queue_y[MAX_MAP_HEIGHT * MAX_MAP_WIDTH];
-    int front = 0, back = 0;
+    int front = 0, back = 0; /* back and front is the index in the queue arrays, front is 
+    the index of the next cell to remove, back is the index to add the next cell*/
     int dx[4] = {0, 0, -1, 1};
     int dy[4] = {-1, 1, 0, 0};
     int x, y, nx, ny, i;
 
-    for (y = 0; y < map_height; y++)
+    for (y = 0; y < map_height; y++) /*set all cells to -1 unvisited*/
         for (x = 0; x < map_width; x++)
             came_from[y][x] = -1;
 
-    came_from[start_y][start_x] = 4; /* mark start as visited */
-    queue_x[back] = start_x;
+    came_from[start_y][start_x] = 4; /* mark start as visited, 
+    0 1 2 3 means reached this tile by moving up, down, left, right from prev tile,
+    4 just means start since its none of the directions */
+    queue_x[back] = start_x; /*set starting coordinates in the queue array*/
     queue_y[back] = start_y;
-    back++;
+    back++; /*since starting cell placed in queue, increment the back index of the queue*/
 
     while (front < back) {
-        x = queue_x[front];
+        x = queue_x[front]; /*dequeue next cell, increment front index*/
         y = queue_y[front];
         front++;
 
@@ -35,26 +38,28 @@ static int bfs_next_step(int start_x, int start_y, int goal_x, int goal_y,
             /* trace back from goal to start to find the first step */
             while (1) {
                 i = came_from[y][x];
-                if (x - dx[i] == start_x && y - dy[i] == start_y) {
-                    *next_x = x;
+                if (x - dx[i] == start_x && y - dy[i] == start_y) { /*take the step that led to current, subtract from 
+                    current to backtrack one step, check if is start tile*/
+                    *next_x = x; /*if it is the start, then our next step should go that way*/
                     *next_y = y;
                     return 1;
                 }
-                nx = x - dx[i];
+                nx = x - dx[i]; /*backtrack one past step*/
                 ny = y - dy[i];
-                x = nx;
+                x = nx; /*note that nx ny are temp variables whereas next_x next_y are return values since
+                function only returns one step*/
                 y = ny;
             }
         }
 
-        for (i = 0; i < 4; i++) {
+        for (i = 0; i < 4; i++) { /*check all directions*/
             nx = x + dx[i];
             ny = y + dy[i];
             if (nx >= 0 && nx < map_width && ny >= 0 && ny < map_height
                 && came_from[ny][nx] == -1
-                && cave_map[ny][nx] == ' ') {
+                && cave_map[ny][nx] == ' ') { /*if neighbour inside map, unvisited via came_from, is walkable*/
                 came_from[ny][nx] = i;
-                queue_x[back] = nx;
+                queue_x[back] = nx; /*new neigbour at the back of the queue*/
                 queue_y[back] = ny;
                 back++;
             }
@@ -67,7 +72,7 @@ static int bfs_next_step(int start_x, int start_y, int goal_x, int goal_y,
 static void pick_patrol_target(void) {
     int x, y, attempts;
 
-    for (attempts = 0; attempts < 200; attempts++) {
+    for (attempts = 0; attempts < 200; attempts++) { /*random x and y within map for 200 tries*/
         x = rand() % map_width;
         y = rand() % map_height;
         if (cave_map[y][x] == ' ') {

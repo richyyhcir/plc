@@ -23,7 +23,7 @@ static void apply_density(void) {
                 continue; /*skip if not a wall*/
             /* horizontal: floor on left and right */
             if (cave_map[y][x - 1] == ' ' && cave_map[y][x + 1] == ' ') { /*checks if wall is between 2 open spaces*/
-                walls_x[removable] = x;
+                walls_x[removable] = x; /*store the coordinates in arrays, increment number of removables*/
                 walls_y[removable] = y;
                 removable++;
             }
@@ -40,7 +40,7 @@ static void apply_density(void) {
     for (i = removable - 1; i > 0; i--) {
         int j = rand() % (i + 1);
         int tmp;
-        tmp = walls_x[i]; walls_x[i] = walls_x[j]; walls_x[j] = tmp;
+        tmp = walls_x[i]; walls_x[i] = walls_x[j]; walls_x[j] = tmp; /*swap value at i with random j*/
         tmp = walls_y[i]; walls_y[i] = walls_y[j]; walls_y[j] = tmp;
     }
 
@@ -51,7 +51,7 @@ static void apply_density(void) {
     }
 }
 
-/* DFS recursive backtracker maze generation — 2x2 cells, 2-wide passages */
+/* DFS iterative backtracker maze generation — 2x2 cells, 2-wide passages */
 void generate_maze(void) {
     int x, y, i, tmp; /*coordinates, loop counter, temp var for swapping values*/
     int cx, cy, nx, ny; /*current coordinates, next coordinates*/
@@ -90,39 +90,39 @@ void generate_maze(void) {
 
     for (by = 0; by < 2; by++)
         for (bx = 0; bx < 2; bx++)
-            cave_map[cy * 3 + 1 + by][cx * 3 + 1 + bx] = ' ';
+            cave_map[cy * 3 + 1 + by][cx * 3 + 1 + bx] = ' '; /*go to center and carve first 2x2 cell, x3 to allow wall in between each cell*/
 
     top = 0;
     stack_x[top] = cx;
     stack_y[top] = cy;
 
     while (top >= 0) {
-        cx = stack_x[top];
+        cx = stack_x[top]; /*set top of stack to current cell*/
         cy = stack_y[top];
 
         neighbor_count = 0;
         for (i = 0; i < 4; i++) {
-            nx = cx + dx[i];
+            nx = cx + dx[i]; /*for each direction x and y change*/
             ny = cy + dy[i];
-            if (nx >= 0 && nx < cw && ny >= 0 && ny < ch && !visited[ny][nx])
-                dirs[neighbor_count++] = i;
+            if (nx >= 0 && nx < cw && ny >= 0 && ny < ch && !visited[ny][nx]) /*if neighbour inside map and not visited*/
+                dirs[neighbor_count++] = i; /*dir store index of neigbour in order up down left right */
         }
 
-        if (neighbor_count == 0) {
+        if (neighbor_count == 0) { /*backtrack to prev cell if no neighbours*/
             top--;
         } else {
-            for (i = neighbor_count - 1; i > 0; i--) {
-                int j = rand() % (i + 1);
+            for (i = neighbor_count - 1; i > 0; i--) { /*start from end of array and move backward*/
+                int j = rand() % (i + 1); /* pick random index from 0 to i*/
                 tmp = dirs[i];
-                dirs[i] = dirs[j];
+                dirs[i] = dirs[j]; /*swap value at i with random j*/
                 dirs[j] = tmp;
             }
 
             i = dirs[0];
-            nx = cx + dx[i];
+            nx = cx + dx[i]; /*next cell x and y*/
             ny = cy + dy[i];
 
-            if (dx[i] == 1) {
+            if (dx[i] == 1) { /*if neighbour is to the right, destroy wall to connect neighbours*/
                 cave_map[cy * 3 + 1][cx * 3 + 3] = ' ';
                 cave_map[cy * 3 + 2][cx * 3 + 3] = ' ';
             } else if (dx[i] == -1) {
@@ -136,13 +136,21 @@ void generate_maze(void) {
                 cave_map[ny * 3 + 3][cx * 3 + 2] = ' ';
             }
 
-            for (by = 0; by < 2; by++)
+            /* Note that The neighbour is a single logical cell in visited, 
+            but in cave_map each logical cell is expanded into a 2x2 area with walls left between adjacent cells. 
+            The wall is there intentionally so DFS can carve passages and form a maze.
+            So in visited it looks like [A][B]
+            But in cave map it looks like [A][A]##[B][B]
+                                          [A][A]##[B][B]
+            2 different overlaid grids*/
+
+            for (by = 0; by < 2; by++) /*now carve up the 2x2 area for the neighbour after breaking down wall*/
                 for (bx = 0; bx < 2; bx++)
                     cave_map[ny * 3 + 1 + by][nx * 3 + 1 + bx] = ' ';
 
-            visited[ny][nx] = 1;
-            top++;
-            stack_x[top] = nx;
+            visited[ny][nx] = 1; /*mark newly created neighbour cell as visited*/
+            top++; /*set index of focus for both stack arrays*/
+            stack_x[top] = nx; /* set neighbour cell as top of stack*/
             stack_y[top] = ny;
         }
     }
