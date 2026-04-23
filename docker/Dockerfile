@@ -4,8 +4,8 @@ FROM gcc:14-bookworm AS build
 WORKDIR /src
 
 COPY Makefile ./
-COPY game.h ./
-COPY main.c map.c enemy.c config.c save.c ./
+COPY include/ ./include/
+COPY src/ ./src/
 
 RUN make clean && make
 

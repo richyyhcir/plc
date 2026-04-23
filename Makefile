@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Werror -ansi -pedantic
-SRCS = main.c map.c enemy.c config.c save.c
+CFLAGS = -Wall -Werror -ansi -pedantic -Iinclude
+SRCS = src/main.c src/map.c src/enemy.c src/config.c src/save.c
 
 ifeq ($(OS),Windows_NT)
 SHELL = cmd.exe

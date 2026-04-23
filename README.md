@@ -4,6 +4,19 @@ Repository for SUTD Term 6 50.051 Programming Language Concept (PLC) 2026.
 
 Project: **Abyss Walker** — a terminal maze game written in strict C90.
 
+## Project layout
+
+```
+PLC/
+├── src/          C source files (main, map, enemy, config, save)
+├── include/      Header files (game.h)
+├── docs/         Report and presentation
+├── docker/       Dockerfile and docker-compose.yml
+├── config.txt    Runtime configuration (read by the binary)
+├── Makefile
+└── README.md
+```
+
 ## Requirements
 
 - `gcc`
@@ -42,13 +55,13 @@ If you prefer to invoke `gcc` directly:
 On Linux:
 
 ```
-gcc -Wall -Werror -ansi -pedantic main.c map.c enemy.c config.c save.c -o abyss_walker
+gcc -Wall -Werror -ansi -pedantic -Iinclude src/main.c src/map.c src/enemy.c src/config.c src/save.c -o abyss_walker
 ```
 
 On Windows:
 
 ```
-gcc -Wall -Werror -ansi -pedantic main.c map.c enemy.c config.c save.c -o abyss_walker.exe
+gcc -Wall -Werror -ansi -pedantic -Iinclude src/main.c src/map.c src/enemy.c src/config.c src/save.c -o abyss_walker.exe
 ```
 
 ## Run
@@ -67,16 +80,24 @@ gcc -Wall -Werror -ansi -pedantic main.c map.c enemy.c config.c save.c -o abyss_
 
 ## Docker
 
-Start the game with Docker Compose:
+Quick start (from the project root):
 
 ```bash
-docker compose up --build abyss-walker
+docker/run.sh              # build (if needed) and run
+docker/run.sh --rebuild    # force a no-cache rebuild before running
+docker/run.sh --reset      # wipe the save/leaderboard volume first
+```
+
+Or run Docker Compose directly:
+
+```bash
+docker compose -f docker/docker-compose.yml run --rm --build abyss-walker
 ```
 
 Stop and remove containers/networks after you exit:
 
 ```bash
-docker compose down
+docker compose -f docker/docker-compose.yml down
 ```
 
 ## Configuration

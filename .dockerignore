@@ -2,7 +2,9 @@
 .gitignore
 .vscode
 
-PLC_Report.pdf
+docs/
+*.pptx
+*.pdf
 
 abyss_walker
 abyss_walker.exe

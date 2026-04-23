@@ -1,7 +1,8 @@
 services:
   abyss-walker:
     build:
-      context: .
+      context: ..
+      dockerfile: docker/Dockerfile
     image: abyss-walker:latest
     stdin_open: true
     tty: true
