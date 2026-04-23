@@ -3,7 +3,7 @@
 # seed: 0 = random each run, any other number = fixed generation
 # density: 100 = perfect maze (no extra paths), 0 = very open (many shortcuts)
 
-width=30
-height=20
+width=13
+height=13
 seed=0
 density=100
